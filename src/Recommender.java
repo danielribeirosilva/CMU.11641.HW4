@@ -1,8 +1,5 @@
 import java.io.FileNotFoundException;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
 
@@ -20,30 +17,13 @@ public class Recommender {
 		String testFile = argv[1];
 		String outputFile = argv[2];
 		
-		/*
-		//Read test file and map data
-		HashMap<Long, HashSet<Long>> testUserItemMap = new HashMap<Long, HashSet<Long>>();
-		try {
-			testUserItemMap = FileReader.readAndMapTestFile(testFile, true);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		*/
 		
-		/*
-		class IIUComparator implements Comparator<InteractionInfoUser>{
-
-			@Override
-			public int compare(InteractionInfoUser a, InteractionInfoUser b) {
-				if(a.getUserId() < b.getUserId()) return -1;
-				if(a.getUserId() > b.getUserId()) return 1;
-				return 0;
-			}
-			
-		}
-		*/
+		//EXPERIMENT 1 - USER-USER SIMILARITY
 		
-		//Read training file and map data
+		int k = 50; //number of neighbors in k-NN
+		
+		//Read training file and map data, indexing by user
+		System.out.println("reading training data ...");
 		HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = new HashMap<Long, LinkedList<InteractionInfoItem>>();
 		try {
 			trainUserItemInteractionMap = FileReader.readAndMapTrainFileIndexedByUser (trainFile);
@@ -52,20 +32,62 @@ public class Recommender {
 			System.exit(-1);
 		}
 		
-		int limit = 0;
-		for(long user : trainUserItemInteractionMap.keySet()){
+		//Read test file and map data, indexing by user
+		System.out.println("reading testing data ...");
+		HashMap<Long, LinkedList<Long>> testUserItemMap = new HashMap<Long, LinkedList<Long>>();
+		try {
+			testUserItemMap = FileReader.readAndMapTestFile(testFile, true);
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		// For each user in test set, compute user-user similarity with previous users
+		// and get top K users for each of these test users
+		System.out.println("doing user-user similiarity recommendation ...");
+		
+		int count = 0;
+		
+		for(long testUser : testUserItemMap.keySet()){
 			
-			LinkedList<InteractionInfoItem> pq = trainUserItemInteractionMap.get(user);
-			Iterator<InteractionInfoItem> it = pq.iterator();
-			
-			while(it.hasNext()){
-				System.out.println(user + ": " + it.next());
+			//get top users for this user
+			LinkedList<InteractionInfoItem> testUserFV = trainUserItemInteractionMap.get(testUser);
+			PriorityQueue<IdSimilarityPair> topNeighbors = new PriorityQueue<IdSimilarityPair>();
+			for(long neighborUser : trainUserItemInteractionMap.keySet()){
+				if(testUser==neighborUser) continue;
+				
+				LinkedList<InteractionInfoItem> neighborUserFV = trainUserItemInteractionMap.get(neighborUser);
+				
+				//compute similarity
+				double similarity = ItemSimilarity.dotProductSimilarity(testUserFV, neighborUserFV);
+				IdSimilarityPair pair = new IdSimilarityPair(neighborUser, similarity);
+				//if good enough, add similarity to PriorityQueue
+				if(topNeighbors.size() < k){
+					topNeighbors.add(pair);
+				}
+				else{
+					if(topNeighbors.peek().similarity < similarity){
+						topNeighbors.poll();
+						topNeighbors.add(pair);
+					}
+				}
+			}
+			//put top neighbors in list
+			LinkedList<IdSimilarityPair> topNeighborsList = new LinkedList<IdSimilarityPair>();
+			while(!topNeighbors.isEmpty()){
+				topNeighborsList.add(topNeighbors.poll());
+			}
+			//Compute prediction rating for required items
+			for(long itemId : testUserItemMap.get(testUser) ){
+				
 			}
 			
-			limit++;
-			if(limit>1)break;
+			
+			count++;
+			if(count%10==0) System.out.println(count+"/"+testUserItemMap.size());
+			
+			
 		}
-
+		
 		
 
 	}

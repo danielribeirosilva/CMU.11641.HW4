@@ -13,8 +13,8 @@ public class FileReader {
 	// 1) test-all.csv : ("MovieID", "UserID") as (long, long)
 	// 2) training_set.csv : ("MovieID","UserID","Rating", "RatingDate") as (long, long, int, String)
 	
-	public static HashMap<Long, HashSet<Long>> readAndMapTestFile (String filePath, boolean indexByUser) throws FileNotFoundException{
-		HashMap<Long, HashSet<Long>> userItemPair = new HashMap<Long, HashSet<Long>>();
+	public static HashMap<Long, LinkedList<Long>> readAndMapTestFile (String filePath, boolean indexByUser) throws FileNotFoundException{
+		HashMap<Long, LinkedList<Long>> userItemPair = new HashMap<Long, LinkedList<Long>>();
 		
 		Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
@@ -33,27 +33,32 @@ public class FileReader {
 	      long item = Long.parseLong(pair[1].trim());
 	      
 	      if(indexByUser){
-	    	  if(userItemPair.containsKey(user)){
+	    	  if(userItemPair.containsKey(user) && !userItemPair.get(user).contains(item)){
 	    		  userItemPair.get(user).add(item);
 	    	  }
 	    	  else{
-	    		  HashSet<Long> hs = new HashSet<Long>();
-	    		  hs.add(item);
-	    		  userItemPair.put(user, hs);
+	    		  LinkedList<Long> ll = new LinkedList<Long>();
+	    		  ll.add(item);
+	    		  userItemPair.put(user, ll);
 	    	  }
 	      }
 	      else{
-	    	  if(userItemPair.containsKey(item)){
+	    	  if(userItemPair.containsKey(item) && !userItemPair.get(item).contains(user)){
 	    		  userItemPair.get(item).add(user);
 	    	  }
 	    	  else{
-	    		  HashSet<Long> hs = new HashSet<Long>();
-	    		  hs.add(user);
-	    		  userItemPair.put(item, hs);
+	    		  LinkedList<Long> ll = new LinkedList<Long>();
+	    		  ll.add(user);
+	    		  userItemPair.put(item, ll);
 	    	  }
 	      }
 
 	    } while (scan.hasNext());
+	    
+	    //sort each list
+	    for(long element : userItemPair.keySet()){
+	    	Collections.sort(userItemPair.get(element));
+	    }
 	    
 		return userItemPair;
 	}
