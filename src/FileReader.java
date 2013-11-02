@@ -1,7 +1,9 @@
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Scanner;
 
 
@@ -58,21 +60,16 @@ public class FileReader {
 	
 	
 	
-	public static HashMap<Long, HashMap<Long, InteractionInfo>> readAndMapTrainFile (String filePath, boolean indexByUser) throws FileNotFoundException{
-		HashMap<Long, HashMap<Long, InteractionInfo>> userItemPair = new HashMap<Long, HashMap<Long, InteractionInfo>>();
+	public static HashMap<Long, LinkedList<InteractionInfoItem>> readAndMapTrainFileIndexedByUser (String filePath) throws FileNotFoundException{
+		HashMap<Long, LinkedList<InteractionInfoItem>> trainingMap = new HashMap<Long, LinkedList<InteractionInfoItem>>();
 		
 		Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
 	    line = scan.nextLine();
-	    
-	    int count = 0;
-	    
+
 	    do{
-	      count++;
-	      if(count%1000==0)
-	    	  System.out.println(count);
 	    	
 	      line = scan.nextLine();
 	      String[] pair = line.split(",");
@@ -86,30 +83,65 @@ public class FileReader {
 	      int rating = Integer.parseInt(pair[2].trim());
 	      String ratingDate = pair[3].trim();
 	      
-	      if(indexByUser){
-	    	  if(userItemPair.containsKey(user)){
-	    		  userItemPair.get(user).put(item, new InteractionInfo(rating, ratingDate));
-	    	  }
-	    	  else{
-	    		  HashMap<Long, InteractionInfo> hm = new HashMap<Long, InteractionInfo>();
-	    		  hm.put(item, new InteractionInfo(rating, ratingDate));
-	    		  userItemPair.put(user, hm);
-	    	  }
-	      }
-	      else{
-	    	  if(userItemPair.containsKey(item)){
-	    		  userItemPair.get(item).put(user, new InteractionInfo(rating, ratingDate));
-	    	  }
-	    	  else{
-	    		  HashMap<Long, InteractionInfo> hm = new HashMap<Long, InteractionInfo>();
-	    		  hm.put(user, new InteractionInfo(rating, ratingDate));
-	    		  userItemPair.put(item, hm);
-	    	  }
-	      }
+	      if(trainingMap.containsKey(user)){
+    		  trainingMap.get(user).add(new InteractionInfoItem(item, rating, ratingDate));
+    	  }
+    	  else{
+    		  LinkedList<InteractionInfoItem> ll = new LinkedList<InteractionInfoItem>();
+    		  ll.add(new InteractionInfoItem(item, rating, ratingDate));
+    		  trainingMap.put(user, ll);
+    	  }
 
 	    }while(scan.hasNext());
 	    
-		return userItemPair;
+	    //sort each list
+	    for(long user : trainingMap.keySet()){
+	    	Collections.sort(trainingMap.get(user));
+	    }
+	    
+		return trainingMap;
+	}
+	
+	public static HashMap<Long, LinkedList<InteractionInfoUser>> readAndMapTrainFileIndexedByItem (String filePath) throws FileNotFoundException{
+		HashMap<Long, LinkedList<InteractionInfoUser>> trainingMap = new HashMap<Long, LinkedList<InteractionInfoUser>>();
+		
+		Scanner scan = new Scanner(new File(filePath));
+	    String line = null;
+	    
+	    //read and ignore first line (headers)
+	    line = scan.nextLine();
+
+	    do{
+	    	
+	      line = scan.nextLine();
+	      String[] pair = line.split(",");
+	      if(pair.length != 4){
+	    	  System.err.println("Error: train file has wrong format. It must be a 4-column CSV.");
+	    	  System.exit(1);
+	      }
+	      
+	      long user = Long.parseLong(pair[0].trim());
+	      long item = Long.parseLong(pair[1].trim());
+	      int rating = Integer.parseInt(pair[2].trim());
+	      String ratingDate = pair[3].trim();
+	      
+	      if(trainingMap.containsKey(item)){
+    		  trainingMap.get(item).add(new InteractionInfoUser(user, rating, ratingDate));
+    	  }
+    	  else{
+    		  LinkedList<InteractionInfoUser> ll = new LinkedList<InteractionInfoUser>();
+    		  ll.add(new InteractionInfoUser(user, rating, ratingDate));
+    		  trainingMap.put(item, ll);
+    	  }
+
+	    }while(scan.hasNext());
+	    
+	    //sort each list
+	    for(long item : trainingMap.keySet()){
+	    	Collections.sort(trainingMap.get(item));
+	    }
+	    
+		return trainingMap;
 	}
 	
 	
