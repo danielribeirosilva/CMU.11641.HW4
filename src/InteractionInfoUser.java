@@ -14,4 +14,7 @@ public class InteractionInfoUser extends InteractionInfo{
 		return this.element;
 	}
 	
+	public boolean equals (InteractionInfo o){
+		return this.element==o.element;
+	}
 }

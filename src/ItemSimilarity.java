@@ -1,36 +1,35 @@
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Iterator;
 
-public class UserSimilarity {
 
-	
+public class ItemSimilarity {
 	// if one of the users has not rated item, then use average rating from user
-	public static double dotProductSimilarity(LinkedList<InteractionInfoItem> aFV, LinkedList<InteractionInfoItem> bFV){
+	public static double dotProductSimilarity(LinkedList<InteractionInfoUser> aFV, LinkedList<InteractionInfoUser> bFV){
 		
 		//get averages for aFV and bFV
 		double avgRatingA = 0, avgRatingB = 0;
 		int sizeA = 0, sizeB = 0;
-		for(InteractionInfoItem ii : aFV){
+		for(InteractionInfoUser ii : aFV){
 			avgRatingA += ii.rating;
 			sizeA++;
 		}
 		avgRatingA /= sizeA;
-		for(InteractionInfoItem ii : bFV){
+		for(InteractionInfoUser ii : bFV){
 			avgRatingB += ii.rating;
 			sizeB++;
 		}
 		avgRatingB /= sizeB;
 		
 		
-		Iterator<InteractionInfoItem> itA = aFV.iterator();
-		Iterator<InteractionInfoItem> itB = bFV.iterator();
+		Iterator<InteractionInfoUser> itA = aFV.iterator();
+		Iterator<InteractionInfoUser> itB = bFV.iterator();
 		
 		if(aFV.size()<1 || bFV.size()<1)
 			return 0.d;
 		
-		InteractionInfoItem a = itA.next();
-		InteractionInfoItem b = itB.next();
+		InteractionInfoUser a = itA.next();
+		InteractionInfoUser b = itB.next();
 		
 		double similarity = 0.d;
 		
@@ -74,16 +73,16 @@ public class UserSimilarity {
 	}
 	
 	// if one of the users has not rated item, then the product will be 0 (won't use average rating)
-	public static double strictDotProductSimilarity(List<InteractionInfoItem> aFV, List<InteractionInfoItem> bFV){
+	public static double strictDotProductSimilarity(List<InteractionInfoUser> aFV, List<InteractionInfoUser> bFV){
 		
-		Iterator<InteractionInfoItem> itA = aFV.iterator();
-		Iterator<InteractionInfoItem> itB = bFV.iterator();
+		Iterator<InteractionInfoUser> itA = aFV.iterator();
+		Iterator<InteractionInfoUser> itB = bFV.iterator();
 		
 		if(aFV.size()<1 || bFV.size()<1)
 			return 0.d;
 		
-		InteractionInfoItem a = itA.next();
-		InteractionInfoItem b = itB.next();
+		InteractionInfoUser a = itA.next();
+		InteractionInfoUser b = itB.next();
 		
 		double similarity = 0.d;
 		
@@ -123,34 +122,34 @@ public class UserSimilarity {
 			
 		return similarity;
 	}
-
+	
 	// if one of the users has not rated item, then use average rating
-	public static double cosineSimilarity(LinkedList<InteractionInfoItem> aFV, LinkedList<InteractionInfoItem> bFV){
+	public static double cosineSimilarity(LinkedList<InteractionInfoUser> aFV, LinkedList<InteractionInfoUser> bFV){
 	
 		//get averages for aFV and bFV
 		double sumRatingA = 0, sumRatingB = 0;
 		//get norm of aFV and bFV
 		int sizeA = 0, sizeB = 0;
-		for(InteractionInfoItem ii : aFV){
+		for(InteractionInfoUser ii : aFV){
 			sumRatingA += ii.rating;
 			sizeA++;
 		}
 		double avgRatingA = sumRatingA / (double)sizeA;
-		for(InteractionInfoItem ii : bFV){
+		for(InteractionInfoUser ii : bFV){
 			sumRatingB += ii.rating;
 			sizeB++;
 		}
 		double avgRatingB = sumRatingB / (double)sizeB;
 		
 		
-		Iterator<InteractionInfoItem> itA = aFV.iterator();
-		Iterator<InteractionInfoItem> itB = bFV.iterator();
+		Iterator<InteractionInfoUser> itA = aFV.iterator();
+		Iterator<InteractionInfoUser> itB = bFV.iterator();
 		
 		if(aFV.size()<1 || bFV.size()<1)
 			return 0.d;
 		
-		InteractionInfoItem a = itA.next();
-		InteractionInfoItem b = itB.next();
+		InteractionInfoUser a = itA.next();
+		InteractionInfoUser b = itB.next();
 		
 		double similarity = 0d;
 		double sumSquareRatingA = 0d, sumSquareRatingB = 0d;
@@ -203,10 +202,6 @@ public class UserSimilarity {
 			
 		return similarity;
 	}
-	
-	
-	
-	
 	
 	
 }

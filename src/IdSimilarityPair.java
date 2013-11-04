@@ -14,6 +14,12 @@ public class IdSimilarityPair implements Comparable<IdSimilarityPair> {
 		return Double.compare(this.similarity, o.similarity);
 	}
 	
+	 @Override
+    public int hashCode() {
+        Long thisId = new Long(this.id);
+        return thisId.hashCode();
+    }
+	
 	public String toString(){
 		return "[ " + id+" "+similarity + "]";
 	}

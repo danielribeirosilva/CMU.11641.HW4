@@ -20,93 +20,27 @@ public class Recommender {
 		String testFile = argv[1];
 		String outputFile = argv[2];
 		
+		//DATA STATISTICS
+		int totalMovies = DataStatistics.numberOfItems(trainFile);
+		int totalUsers = DataStatistics.numberOfUsers(trainFile);
+		int[] ratingDistribution = DataStatistics.ratingDistribution(trainFile);
+		System.out.println("total movies: "+totalMovies);
+		System.out.println("total users: "+totalUsers);
+		for(int i=0; i<5; i++){
+			System.out.println("# of times any movie was rated "+(i+1)+": "+ratingDistribution[i]);
+		}
+		DataStatistics.printUserStatistics(1234576, trainFile);
 		
 		//EXPERIMENT 1 - USER-USER SIMILARITY
+		//UserBasedCF userBasedCF = new UserBasedCF(50, trainFile, testFile, outputFile);
+		//userBasedCF.generateRecommendations();
 		
-		int k = 50; //number of neighbors in k-NN
 		
-		//Read training file and map data, indexing by user
-		System.out.println("reading training data ...");
-		HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = new HashMap<Long, LinkedList<InteractionInfoItem>>();
-		try {
-			trainUserItemInteractionMap = FileInteraction.readAndMapTrainFileIndexedByUser (trainFile);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}
+		//EXPERIMENT 2 - ITEM-ITEM SIMILARITY
+		//ItemBasedCF itemBasedCF = new ItemBasedCF(50, trainFile, testFile, outputFile);
+		//itemBasedCF.generateRecommendations();
 		
-		//Read test file and map data, indexing by user
-		System.out.println("reading testing data ...");
-		HashMap<Long, LinkedList<Long>> testUserItemMap = new HashMap<Long, LinkedList<Long>>();
-		try {
-			testUserItemMap = FileInteraction.readAndMapTestFile(testFile, true);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
 		
-		// For each user in test set, compute user-user similarity with previous users
-		// and get top K users for each of these test users
-		System.out.println("doing user-user similiarity recommendation ...");
-		
-		int count = 0;
-		
-		//compute prediction for each user and item in the test file
-		HashMap<Long, HashMap<Long, Double>> ratingPredictions = new HashMap<Long, HashMap<Long, Double>>(); 
-		for(long testUser : testUserItemMap.keySet()){
-			
-			//get top users for this user
-			LinkedList<InteractionInfoItem> testUserFV = trainUserItemInteractionMap.get(testUser);
-			PriorityQueue<IdSimilarityPair> topNeighbors = new PriorityQueue<IdSimilarityPair>();
-			for(long neighborUser : trainUserItemInteractionMap.keySet()){
-				if(testUser==neighborUser) continue;
-				
-				LinkedList<InteractionInfoItem> neighborUserFV = trainUserItemInteractionMap.get(neighborUser);
-				
-				//compute similarity
-				double similarity = UserSimilarity.dotProductSimilarity(testUserFV, neighborUserFV);
-				//double similarity = UserSimilarity.strictDotProductSimilarity(testUserFV, neighborUserFV);
-				//double similarity = UserSimilarity.cosineSimilarity(testUserFV, neighborUserFV);
-				
-				IdSimilarityPair pair = new IdSimilarityPair(neighborUser, similarity);
-				//if good enough, add similarity to PriorityQueue
-				if(topNeighbors.size() < k){
-					topNeighbors.add(pair);
-				}
-				else{
-					if(topNeighbors.peek().similarity < similarity){
-						topNeighbors.poll();
-						topNeighbors.add(pair);
-					}
-				}
-			}
-			
-			//put top neighbors in list
-			LinkedList<IdSimilarityPair> topNeighborsList = new LinkedList<IdSimilarityPair>();
-			while(!topNeighbors.isEmpty()){
-				topNeighborsList.add(topNeighbors.poll());
-			}
-			
-			//Compute prediction rating for required items
-			HashMap<Long, Double> currentUserPredictions = new HashMap<Long, Double>();
-			for(long itemId : testUserItemMap.get(testUser) ){
-				//double itemRatingPrediction = ItemPrediction.simpleAveragePrediction(itemId, topNeighborsList, trainUserItemInteractionMap);
-				double itemRatingPrediction = RatingPrediction.weightedAveragePrediction(itemId, topNeighborsList, trainUserItemInteractionMap);
-				currentUserPredictions.put(itemId, itemRatingPrediction);
-
-				//System.out.println("user: "+testUser+" item: "+itemId+" predicition: "+itemRatingPrediction);
-			}
-			
-			ratingPredictions.put(testUser, currentUserPredictions);
-			
-			count++;
-			if(count%10==0) System.out.println(count+"/"+testUserItemMap.size());	
-		}
-		
-		//write predictions to output file in same order
-		System.out.println("writing predictions to file... ");
-		FileInteraction.writePredictionsToFile(testFile, "predictionsExp1.txt", ratingPredictions);
-		
-
 	}
 
 }
