@@ -1,4 +1,7 @@
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
@@ -6,7 +9,7 @@ import java.util.PriorityQueue;
 
 public class Recommender {
 
-	public static void main(String[] argv) {
+	public static void main(String[] argv) throws IOException {
 		
 		if(argv.length < 3){
 			System.err.println("Error: please specify test, train and output files on argv.");
@@ -26,7 +29,7 @@ public class Recommender {
 		System.out.println("reading training data ...");
 		HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = new HashMap<Long, LinkedList<InteractionInfoItem>>();
 		try {
-			trainUserItemInteractionMap = FileReader.readAndMapTrainFileIndexedByUser (trainFile);
+			trainUserItemInteractionMap = FileInteraction.readAndMapTrainFileIndexedByUser (trainFile);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 			System.exit(-1);
@@ -36,7 +39,7 @@ public class Recommender {
 		System.out.println("reading testing data ...");
 		HashMap<Long, LinkedList<Long>> testUserItemMap = new HashMap<Long, LinkedList<Long>>();
 		try {
-			testUserItemMap = FileReader.readAndMapTestFile(testFile, true);
+			testUserItemMap = FileInteraction.readAndMapTestFile(testFile, true);
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
 		}
@@ -47,6 +50,8 @@ public class Recommender {
 		
 		int count = 0;
 		
+		//compute prediction for each user and item in the test file
+		HashMap<Long, HashMap<Long, Double>> ratingPredictions = new HashMap<Long, HashMap<Long, Double>>(); 
 		for(long testUser : testUserItemMap.keySet()){
 			
 			//get top users for this user
@@ -58,7 +63,10 @@ public class Recommender {
 				LinkedList<InteractionInfoItem> neighborUserFV = trainUserItemInteractionMap.get(neighborUser);
 				
 				//compute similarity
-				double similarity = ItemSimilarity.dotProductSimilarity(testUserFV, neighborUserFV);
+				double similarity = UserSimilarity.dotProductSimilarity(testUserFV, neighborUserFV);
+				//double similarity = UserSimilarity.strictDotProductSimilarity(testUserFV, neighborUserFV);
+				//double similarity = UserSimilarity.cosineSimilarity(testUserFV, neighborUserFV);
+				
 				IdSimilarityPair pair = new IdSimilarityPair(neighborUser, similarity);
 				//if good enough, add similarity to PriorityQueue
 				if(topNeighbors.size() < k){
@@ -71,23 +79,32 @@ public class Recommender {
 					}
 				}
 			}
+			
 			//put top neighbors in list
 			LinkedList<IdSimilarityPair> topNeighborsList = new LinkedList<IdSimilarityPair>();
 			while(!topNeighbors.isEmpty()){
 				topNeighborsList.add(topNeighbors.poll());
 			}
+			
 			//Compute prediction rating for required items
+			HashMap<Long, Double> currentUserPredictions = new HashMap<Long, Double>();
 			for(long itemId : testUserItemMap.get(testUser) ){
-				
+				//double itemRatingPrediction = ItemPrediction.simpleAveragePrediction(itemId, topNeighborsList, trainUserItemInteractionMap);
+				double itemRatingPrediction = RatingPrediction.weightedAveragePrediction(itemId, topNeighborsList, trainUserItemInteractionMap);
+				currentUserPredictions.put(itemId, itemRatingPrediction);
+
+				//System.out.println("user: "+testUser+" item: "+itemId+" predicition: "+itemRatingPrediction);
 			}
 			
+			ratingPredictions.put(testUser, currentUserPredictions);
 			
 			count++;
-			if(count%10==0) System.out.println(count+"/"+testUserItemMap.size());
-			
-			
+			if(count%10==0) System.out.println(count+"/"+testUserItemMap.size());	
 		}
 		
+		//write predictions to output file in same order
+		System.out.println("writing predictions to file... ");
+		FileInteraction.writePredictionsToFile(testFile, "predictionsExp1.txt", ratingPredictions);
 		
 
 	}

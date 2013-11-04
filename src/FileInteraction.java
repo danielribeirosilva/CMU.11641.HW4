@@ -1,5 +1,8 @@
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -7,7 +10,7 @@ import java.util.LinkedList;
 import java.util.Scanner;
 
 
-public class FileReader {
+public class FileInteraction {
 	
 	//Two files available:
 	// 1) test-all.csv : ("MovieID", "UserID") as (long, long)
@@ -149,5 +152,57 @@ public class FileReader {
 		return trainingMap;
 	}
 	
+	public static void writePredictionsToFile(String testFile, String outputFileName, HashMap<Long, HashMap<Long, Double>> ratingPredictions) throws IOException{
+		
+		FileWriter fileWriter = new FileWriter(outputFileName);
+	    BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
+	    
+	    Scanner scan = new Scanner(new File(testFile));
+	    String line = null;
+	    
+	    boolean firstLine = true;
+	    long currentUser = -1;
+	    HashMap<Long, Double> currentUserPredictions = new HashMap<Long, Double>();
+	    
+	    //read and ignore first line (headers)
+	    line = scan.nextLine();
+	    
+	    do {
+	    	
+	      line = scan.nextLine();
+	      
+	      String[] pair = line.split(",");
+	      if(pair.length != 2){
+	    	  System.err.println("Error: test file has wrong format. It must be a 2-column CSV.");
+	    	  System.exit(1);
+	      }
+	      
+	      long user = Long.parseLong(pair[0].trim());
+	      long item = Long.parseLong(pair[1].trim());
+	      
+	      if(user != currentUser){
+	    	  if(!ratingPredictions.containsKey(user)){
+		    	  System.err.println("Error: test file contains user with uncomputed prediction.");
+		    	  System.exit(1);
+		      }
+	    	  currentUserPredictions = ratingPredictions.get(user);
+	      }
+	      
+	      if(!currentUserPredictions.containsKey(item)){
+	    	  System.err.println("Error: test file contains item with uncomputed prediction.");
+	    	  System.exit(1);
+	      }
+	    	  
+	      double prediction = currentUserPredictions.get(item);
+	      
+	      if(!firstLine) bufferedWriter.newLine();
+	      if(firstLine){firstLine=false;}
+	      bufferedWriter.write(String.valueOf(prediction));
+
+	    } while (scan.hasNext());
+	    
+	    bufferedWriter.close();
+		
+	}
 	
 }
