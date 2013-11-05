@@ -11,6 +11,13 @@ public class IdSimilarityPair implements Comparable<IdSimilarityPair> {
 	
 	@Override
 	public int compareTo(IdSimilarityPair o) {
+		if(this.similarity == o.similarity){
+			if(this.id < o.id)
+				return -1;
+			if(this.id > o.id)
+				return 1;
+			return 0;
+		}
 		return Double.compare(this.similarity, o.similarity);
 	}
 	

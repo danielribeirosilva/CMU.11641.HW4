@@ -10,17 +10,14 @@ public class UserSimilarity {
 		
 		//get averages for aFV and bFV
 		double avgRatingA = 0, avgRatingB = 0;
-		int sizeA = 0, sizeB = 0;
 		for(InteractionInfoItem ii : aFV){
 			avgRatingA += ii.rating;
-			sizeA++;
 		}
-		avgRatingA /= sizeA;
+		avgRatingA /= aFV.size();
 		for(InteractionInfoItem ii : bFV){
 			avgRatingB += ii.rating;
-			sizeB++;
 		}
-		avgRatingB /= sizeB;
+		avgRatingB /= bFV.size();
 		
 		
 		Iterator<InteractionInfoItem> itA = aFV.iterator();
@@ -129,18 +126,14 @@ public class UserSimilarity {
 	
 		//get averages for aFV and bFV
 		double sumRatingA = 0, sumRatingB = 0;
-		//get norm of aFV and bFV
-		int sizeA = 0, sizeB = 0;
 		for(InteractionInfoItem ii : aFV){
 			sumRatingA += ii.rating;
-			sizeA++;
 		}
-		double avgRatingA = sumRatingA / (double)sizeA;
+		double avgRatingA = sumRatingA / (double)aFV.size();
 		for(InteractionInfoItem ii : bFV){
 			sumRatingB += ii.rating;
-			sizeB++;
 		}
-		double avgRatingB = sumRatingB / (double)sizeB;
+		double avgRatingB = sumRatingB / (double)bFV.size();
 		
 		
 		Iterator<InteractionInfoItem> itA = aFV.iterator();

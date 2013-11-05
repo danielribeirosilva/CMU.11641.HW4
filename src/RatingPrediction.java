@@ -6,8 +6,8 @@ import java.util.LinkedList;
 public class RatingPrediction {
 	
 	/*------------ USER-BASED --------*/
-	
-	public static double userBasedSimpleAveragePrediction (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap){
+	/*
+	public static double userBasedSimpleAveragePredictionOld (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap){
 		
 		double prediction = 0.d;
 		
@@ -35,6 +35,28 @@ public class RatingPrediction {
 		
 		return prediction / topNeighborsList.size();
 	}
+	*/
+	
+	public static double userBasedSimpleAveragePrediction (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, HashMap<Long, Integer>> userItemRatingMap, HashMap<Long, Double> usersAvgRating){
+		
+		double prediction = 0.d;
+		
+		for(IdSimilarityPair idSim : topNeighborsList){
+			long currentNeighbor = idSim.id;
+			HashMap<Long, Integer> neighborFV = userItemRatingMap.get(currentNeighbor);
+			
+			if(neighborFV.containsKey(targetItemId)){
+				prediction += neighborFV.get(targetItemId);
+			}
+			else{
+				double neighborAvgRating = usersAvgRating.get(currentNeighbor);
+				prediction += neighborAvgRating;
+			}
+		}
+		
+		return prediction / topNeighborsList.size();
+	}
+	
 	
 	public static double userBasedWeightedAveragePrediction (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap){
 		
@@ -101,6 +123,38 @@ public class RatingPrediction {
 		prediction =+ totalUnratedNeighbors*targetUserAvgRating;
 		
 		return prediction / targetUserRatings.size();
+	}
+	
+	public static double itemBasedWeightedAveragePrediction (long targetUserId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap){
+		
+		//user rating list
+		LinkedList<InteractionInfoItem> targetUserRatings = trainUserItemInteractionMap.get(targetUserId);
+		
+		//put ratings in hash set so that "contains" will be in O(1) 
+		HashMap<Long,Integer> targetUserRatingsMap = new HashMap<Long,Integer>();
+		double targetUserAvgRating = 0d;
+		for(InteractionInfoItem iii : targetUserRatings){
+			targetUserAvgRating += iii.rating;
+			targetUserRatingsMap.put(iii.element, iii.rating);
+		}
+		targetUserAvgRating /= targetUserRatings.size();
+		
+		double prediction = 0d;
+		double sumOfSimilarities = 0.d;
+		
+		for(IdSimilarityPair pair : topNeighborsList){
+			long currentItem = pair.id;
+			double currentSimilarity = pair.similarity;
+			sumOfSimilarities += currentSimilarity;
+			if(targetUserRatingsMap.containsKey(currentItem)){
+				prediction += targetUserRatingsMap.get(currentItem)*currentSimilarity;
+			}
+			else{
+				prediction += targetUserAvgRating*currentSimilarity;
+			}
+		}
+		
+		return prediction / sumOfSimilarities;
 	}
 
 

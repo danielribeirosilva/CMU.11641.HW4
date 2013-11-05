@@ -18,26 +18,25 @@ public class ItemBasedCF {
 		this.outputFile = outputFile;
 	}
 	
-	public void generateRecommendations() throws IOException{
+	public void generateRecommendations(String similarityType, String predictionType) throws IOException{
 		
-		//Read training file and map data, indexing by user
-		System.out.println("reading training data ...");
-		HashMap<Long, LinkedList<InteractionInfoUser>> trainItemUserInteractionMap = new HashMap<Long, LinkedList<InteractionInfoUser>>();
-		try {
-			trainItemUserInteractionMap = FileInteraction.readAndMapTrainFileIndexedByItem (trainFile);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}
+		assert(similarityType.equals("dotProduct") || similarityType.equals("strictDotProduct") || similarityType.equals("cosine"));
+		assert(predictionType.equals("mean") || predictionType.equals("weighted"));
 		
-		//Read test file and map data, indexing by user
+		System.out.println("\nItem-based CF using "+similarityType+" similarity for top "+this.k+" neighbors");
+		
+		//Read training file and map data, indexing by item
+		System.out.println("reading training data (indexing by item) ...");
+		HashMap<Long, LinkedList<InteractionInfoUser>> trainItemUserInteractionMap = FileInteraction.readAndMapTrainFileIndexedByItem (trainFile);
+		
+		//reload train file, but now indexed by user
+		System.out.println("reading training data (indexing by user) ...");
+		HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = FileInteraction.readAndMapTrainFileIndexedByUser(trainFile);
+		
+		//Read test file and map data, indexing by item
 		System.out.println("reading testing data ...");
-		HashMap<Long, LinkedList<Long>> testItemUserMap = new HashMap<Long, LinkedList<Long>>();
-		try {
-			testItemUserMap = FileInteraction.readAndMapTestFile(testFile, false);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+		HashMap<Long, LinkedList<Long>> testItemUserMap = FileInteraction.readAndMapTestFile(testFile, false);
+		
 		
 		// For each user in test set, compute user-user similarity with previous users
 		// and get top K users for each of these test users
@@ -58,9 +57,16 @@ public class ItemBasedCF {
 				LinkedList<InteractionInfoUser> neighborItemFV = trainItemUserInteractionMap.get(neighborItem);
 				
 				//compute similarity
-				double similarity = ItemSimilarity.dotProductSimilarity(testItemFV, neighborItemFV);
-				//double similarity = UserSimilarity.strictDotProductSimilarity(testUserFV, neighborUserFV);
-				//double similarity = UserSimilarity.cosineSimilarity(testUserFV, neighborUserFV);
+				double similarity = 0d;
+				if(similarityType.equals("dotProduct")){
+					similarity = ItemSimilarity.dotProductSimilarity(testItemFV, neighborItemFV);
+				}
+				else if(similarityType.equals("strictDotProduct")){
+					similarity = ItemSimilarity.strictDotProductSimilarity(testItemFV, neighborItemFV);
+				}
+				else if(similarityType.equals("cosine")){
+					similarity = ItemSimilarity.cosineSimilarity(testItemFV, neighborItemFV);
+				}
 				
 				IdSimilarityPair pair = new IdSimilarityPair(neighborItem, similarity);
 				//if good enough, add similarity to PriorityQueue
@@ -81,17 +87,17 @@ public class ItemBasedCF {
 				topNeighborsList.add(topNeighbors.poll());
 			}
 			
-			//free unused memory
-			trainItemUserInteractionMap.clear();
-			
-			//reload train file, but now indexed by user
-			HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = FileInteraction.readAndMapTrainFileIndexedByUser(trainFile);
-			
 			//Compute prediction rating for required items
 			HashMap<Long, Double> currentItemPredictions = new HashMap<Long, Double>();
 			for(long userId : testItemUserMap.get(testItem) ){
-				double itemRatingPrediction = RatingPrediction.itemBasedSimpleAveragePrediction(userId, topNeighborsList, trainUserItemInteractionMap);
-				//double itemRatingPrediction = RatingPrediction.itemBasedWeightedAveragePrediction(userId, topNeighborsList, trainUserItemInteractionMap);
+				
+				double itemRatingPrediction = 0d;
+				if(predictionType.equals("mean")){
+					itemRatingPrediction = RatingPrediction.itemBasedSimpleAveragePrediction(userId, topNeighborsList, trainUserItemInteractionMap);
+				}
+				else if(predictionType.equals("weighted")){
+					itemRatingPrediction = RatingPrediction.itemBasedWeightedAveragePrediction(userId, topNeighborsList, trainUserItemInteractionMap);
+				}
 				currentItemPredictions.put(userId, itemRatingPrediction);
 
 				//System.out.println("user: "+userId+" item: "+testItem+" predicition: "+itemRatingPrediction);
@@ -106,5 +112,54 @@ public class ItemBasedCF {
 		//write predictions to output file in same order
 		System.out.println("writing predictions to file... ");
 		FileInteraction.writeInvertedPredictionsToFile(testFile, outputFile, ratingPredictions);
+	}
+	
+	public void printItemsTopKNeighbors(long targetItem, String similarityType) throws FileNotFoundException{
+		//Read training file and map data, indexing by item
+		System.out.println("Top "+this.k+" Neighbors for Movie "+targetItem+" using "+similarityType+" similarity");
+		HashMap<Long, LinkedList<InteractionInfoUser>> trainItemUserInteractionMap = FileInteraction.readAndMapTrainFileIndexedByItem (trainFile);
+		
+		//get top items for this item
+		LinkedList<InteractionInfoUser> testItemFV = trainItemUserInteractionMap.get(targetItem);
+		PriorityQueue<IdSimilarityPair> topNeighbors = new PriorityQueue<IdSimilarityPair>();
+		for(long neighborItem : trainItemUserInteractionMap.keySet()){
+			if(targetItem == neighborItem) continue;
+			
+			LinkedList<InteractionInfoUser> neighborItemFV = trainItemUserInteractionMap.get(neighborItem);
+			
+			//compute similarity
+			double similarity = 0d;
+			if(similarityType.equals("dotProduct")){
+				similarity = ItemSimilarity.dotProductSimilarity(testItemFV, neighborItemFV);
+			}
+			else if(similarityType.equals("strictDotProduct")){
+				similarity = ItemSimilarity.strictDotProductSimilarity(testItemFV, neighborItemFV);
+			}
+			else if(similarityType.equals("cosine")){
+				similarity = ItemSimilarity.cosineSimilarity(testItemFV, neighborItemFV);
+			}
+			
+			IdSimilarityPair pair = new IdSimilarityPair(neighborItem, similarity);
+			//if good enough, add similarity to PriorityQueue
+			if(topNeighbors.size() < this.k){
+				topNeighbors.add(pair);
+			}
+			else{
+				if(topNeighbors.peek().similarity < similarity){
+					topNeighbors.poll();
+					topNeighbors.add(pair);
+				}
+			}
+		}
+		
+		//put top K neighbors in desc order in array
+		int pos = Math.min(this.k, topNeighbors.size());
+		IdSimilarityPair[] topK = new IdSimilarityPair[pos];
+		while(!topNeighbors.isEmpty()){
+			topK[--pos] = topNeighbors.poll();
+		}
+		for(IdSimilarityPair neighbor : topK){
+			System.out.println("id: "+neighbor.id + " - similarity: "+neighbor.similarity);
+		}
 	}
 }
