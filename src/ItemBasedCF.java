@@ -20,13 +20,14 @@ public class ItemBasedCF {
 	
 	public void generateRecommendations(String similarityType, String predictionType) throws IOException{
 		
-		assert(similarityType.equals("dotProduct") || similarityType.equals("strictDotProduct") || similarityType.equals("cosine"));
+		assert(similarityType.equals("dotProduct") || similarityType.equals("cosine") || similarityType.equals("normalizedDotProduct") || similarityType.equals("normalizedCosine"));
 		assert(predictionType.equals("mean") || predictionType.equals("weighted"));
 		
-		System.out.println("\nItem-based CF using "+similarityType+" similarity for top "+this.k+" neighbors");
+		System.out.println("\nItem-based CF using "+predictionType+" and "+similarityType+" similarity for top "+this.k+" neighbors");
 		
 		//Read training file and map data, indexing by item
 		System.out.println("reading training data (indexing by item) ...");
+		HashMap<Long, Double> itemsAvgRating = new HashMap<Long, Double>();
 		HashMap<Long, LinkedList<InteractionInfoUser>> trainItemUserInteractionMap = FileInteraction.readAndMapTrainFileIndexedByItem (trainFile);
 		
 		//reload train file, but now indexed by user
@@ -37,6 +38,16 @@ public class ItemBasedCF {
 		System.out.println("reading testing data ...");
 		HashMap<Long, LinkedList<Long>> testItemUserMap = FileInteraction.readAndMapTestFile(testFile, false);
 		
+		
+		//pre-compute items' average ratings
+		for(Long item : trainItemUserInteractionMap.keySet()){
+			double sumOfRatings = 0d;
+			for(InteractionInfoUser iiu : trainItemUserInteractionMap.get(item)){
+				sumOfRatings += iiu.rating;
+			}
+			double avgRating = sumOfRatings / trainItemUserInteractionMap.get(item).size();
+			itemsAvgRating.put(item, avgRating);
+		}
 		
 		// For each user in test set, compute user-user similarity with previous users
 		// and get top K users for each of these test users
@@ -58,14 +69,20 @@ public class ItemBasedCF {
 				
 				//compute similarity
 				double similarity = 0d;
+				double testItemAvgRating = itemsAvgRating.get(testItem);
+				double neighborItemAvgRating = itemsAvgRating.get(neighborItem);
+				
 				if(similarityType.equals("dotProduct")){
-					similarity = ItemSimilarity.dotProductSimilarity(testItemFV, neighborItemFV);
-				}
-				else if(similarityType.equals("strictDotProduct")){
-					similarity = ItemSimilarity.strictDotProductSimilarity(testItemFV, neighborItemFV);
+					similarity = ItemSimilarity.dotProductSimilarity(testItemFV, testItemAvgRating, neighborItemFV, neighborItemAvgRating);
 				}
 				else if(similarityType.equals("cosine")){
-					similarity = ItemSimilarity.cosineSimilarity(testItemFV, neighborItemFV);
+					similarity = ItemSimilarity.cosineSimilarity(testItemFV, testItemAvgRating, neighborItemFV, neighborItemAvgRating);
+				}
+				else if(similarityType.equals("normalizedDotProduct")){
+					similarity = ItemSimilarity.normalizedDotProductSimilarity(testItemFV, testItemAvgRating, neighborItemFV, neighborItemAvgRating);
+				}
+				else if(similarityType.equals("normalizedCosine")){
+					similarity = ItemSimilarity.normalizedCosineSimilarity(testItemFV, testItemAvgRating, neighborItemFV, neighborItemAvgRating);
 				}
 				
 				IdSimilarityPair pair = new IdSimilarityPair(neighborItem, similarity);
@@ -106,7 +123,7 @@ public class ItemBasedCF {
 			ratingPredictions.put(testItem, currentItemPredictions);
 			
 			count++;
-			if(count%10==0) System.out.println(count+"/"+testItemUserMap.size());	
+			if(count%500==0) System.out.println(count+"/"+testItemUserMap.size());	
 		}
 		
 		//write predictions to output file in same order
@@ -119,6 +136,18 @@ public class ItemBasedCF {
 		System.out.println("Top "+this.k+" Neighbors for Movie "+targetItem+" using "+similarityType+" similarity");
 		HashMap<Long, LinkedList<InteractionInfoUser>> trainItemUserInteractionMap = FileInteraction.readAndMapTrainFileIndexedByItem (trainFile);
 		
+		//pre-compute items' average ratings
+		HashMap<Long, Double> itemsAvgRating = new HashMap<Long, Double>();
+		for(Long item : trainItemUserInteractionMap.keySet()){
+			double sumOfRatings = 0d;
+			for(InteractionInfoUser iiu : trainItemUserInteractionMap.get(item)){
+				sumOfRatings += iiu.rating;
+			}
+			double avgRating = sumOfRatings / trainItemUserInteractionMap.get(item).size();
+			itemsAvgRating.put(item, avgRating);
+		}
+		
+		
 		//get top items for this item
 		LinkedList<InteractionInfoUser> testItemFV = trainItemUserInteractionMap.get(targetItem);
 		PriorityQueue<IdSimilarityPair> topNeighbors = new PriorityQueue<IdSimilarityPair>();
@@ -129,14 +158,20 @@ public class ItemBasedCF {
 			
 			//compute similarity
 			double similarity = 0d;
+			double targetItemAvgRating = itemsAvgRating.get(targetItem);
+			double neighborItemAvgRating = itemsAvgRating.get(neighborItem);
+			
 			if(similarityType.equals("dotProduct")){
-				similarity = ItemSimilarity.dotProductSimilarity(testItemFV, neighborItemFV);
-			}
-			else if(similarityType.equals("strictDotProduct")){
-				similarity = ItemSimilarity.strictDotProductSimilarity(testItemFV, neighborItemFV);
+				similarity = ItemSimilarity.dotProductSimilarity(testItemFV, targetItemAvgRating, neighborItemFV, neighborItemAvgRating);
 			}
 			else if(similarityType.equals("cosine")){
-				similarity = ItemSimilarity.cosineSimilarity(testItemFV, neighborItemFV);
+				similarity = ItemSimilarity.cosineSimilarity(testItemFV, targetItemAvgRating, neighborItemFV, neighborItemAvgRating);
+			}
+			else if(similarityType.equals("normalizedDotProduct")){
+				similarity = ItemSimilarity.normalizedDotProductSimilarity(testItemFV, targetItemAvgRating, neighborItemFV, neighborItemAvgRating);
+			}
+			else if(similarityType.equals("normalizedCosine")){
+				similarity = ItemSimilarity.normalizedCosineSimilarity(testItemFV, targetItemAvgRating, neighborItemFV, neighborItemAvgRating);
 			}
 			
 			IdSimilarityPair pair = new IdSimilarityPair(neighborItem, similarity);

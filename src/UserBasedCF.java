@@ -1,5 +1,6 @@
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.text.ParseException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.PriorityQueue;
@@ -18,33 +19,44 @@ public class UserBasedCF {
 		this.outputFile = outputFile;
 	}
 	
-	public void generateRecommendations(String similarityType, String predictionType) throws IOException{
+	public void generateRecommendations(String similarityType, String predictionType) throws IOException, ParseException{
 		
-		//long startTime, endTime;
+		long startTime, endTime;
+		startTime = System.currentTimeMillis();
 		
-		assert(similarityType.equals("dotProduct") || similarityType.equals("strictDotProduct") || similarityType.equals("cosine"));
-		assert(predictionType.equals("mean") || predictionType.equals("weighted"));
+		assert(similarityType.equals("dotProduct") || similarityType.equals("cosine") || similarityType.equals("normalizedDotProduct") || similarityType.equals("normalizedCosine") || similarityType.equals("pearson") || similarityType.equals("custom") );
+		assert(predictionType.equals("mean") || predictionType.equals("weighted") || predictionType.equals("pearson") || predictionType.equals("custom"));
 		
-		System.out.println("\nUser-based CF using "+similarityType+" similarity for top "+this.k+" neighbors");
+		System.out.println("\nUser-based CF using "+predictionType+" and "+similarityType+" similarity for top "+this.k+" neighbors");
 		
 		//Read training file and map data, indexing by user
-		System.out.println("reading training data ...");
+		System.out.println("reading training data (indexing by user) ...");
 		HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = FileInteraction.readAndMapTrainFileIndexedByUser (trainFile);
 		HashMap<Long, Double> usersAvgRating = new HashMap<Long, Double>();
 		HashMap<Long, HashMap<Long, Integer>> userItemRatingMap = FileInteraction.generateUserItemRatingMapFromTrainFile(trainFile);
+		HashMap<Long, HashMap<Long, RatingDatePair>> userItemRatingDateMap = FileInteraction.generateUserItemRatingDatePairMapFromTrainFile(trainFile);
+		
+		//Read training file and map data, indexing by item
+		System.out.println("reading training data (indexing by item) ...");
+		HashMap<Long, Double> itemsAvgRating = new HashMap<Long, Double>();
+		HashMap<Long, LinkedList<InteractionInfoUser>> trainItemUserInteractionMap = FileInteraction.readAndMapTrainFileIndexedByItem (trainFile);
 		
 		//Read test file and map data, indexing by user
 		System.out.println("reading testing data ...");
-		HashMap<Long, LinkedList<Long>> testUserItemMap = new HashMap<Long, LinkedList<Long>>();
-		try {
-			testUserItemMap = FileInteraction.readAndMapTestFile(testFile, true);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
+		HashMap<Long, LinkedList<Long>> testUserItemMap = FileInteraction.readAndMapTestFile(testFile, true);
 		
-		// For each user in test set, compute user-user similarity with previous users
-		// and get top K users for each of these test users
-		System.out.println("doing user-user similiarity recommendation ...");
+		 //global average rating
+		 double globalRatingAvg = DataStatistics.getGlobalRatingAverage(trainFile);
+		
+		//pre-compute items' average ratings
+		for(Long item : trainItemUserInteractionMap.keySet()){
+			double sumOfRatings = 0d;
+			for(InteractionInfoUser iiu : trainItemUserInteractionMap.get(item)){
+				sumOfRatings += iiu.rating;
+			}
+			double avgRating = sumOfRatings / trainItemUserInteractionMap.get(item).size();
+			itemsAvgRating.put(item, avgRating);
+		}
 		
 		//pre-compute users' average ratings
 		for(Long user : trainUserItemInteractionMap.keySet()){
@@ -56,6 +68,10 @@ public class UserBasedCF {
 			usersAvgRating.put(user, avgRating);
 		}
 		
+		// For each user in test set, compute user-user similarity with previous users
+		// and get top K users for each of these test users
+		System.out.println("doing user-user similiarity recommendation ...");
+				
 		int count = 0;
 		
 		//compute prediction for each user and item in the test file
@@ -70,15 +86,26 @@ public class UserBasedCF {
 				
 				LinkedList<InteractionInfoItem> neighborUserFV = trainUserItemInteractionMap.get(neighborUser);
 				
+				double avgRatingTestUser = usersAvgRating.get(testUser);
+				double avgRatingNeighbor = usersAvgRating.get(neighborUser);
 				double similarity = 0d;
 				if(similarityType.equals("dotProduct")){
-					similarity = UserSimilarity.dotProductSimilarity(testUserFV, neighborUserFV);
-				}
-				else if(similarityType.equals("strictDotProduct")){
-					similarity = UserSimilarity.strictDotProductSimilarity(testUserFV, neighborUserFV);
+					similarity = UserSimilarity.dotProductSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor);
 				}
 				else if(similarityType.equals("cosine")){
-					similarity = UserSimilarity.cosineSimilarity(testUserFV, neighborUserFV);
+					similarity = UserSimilarity.cosineSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor);
+				}
+				else if(similarityType.equals("normalizedDotProduct")){
+					similarity = UserSimilarity.normalizedDotProductSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor, itemsAvgRating, globalRatingAvg);
+				}
+				else if(similarityType.equals("normalizedCosine")){
+					similarity = UserSimilarity.normalizedCosineSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor, itemsAvgRating, globalRatingAvg);
+				}
+				else if(similarityType.equals("pearson")){
+					similarity = UserSimilarity.pearsonSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor);
+				}
+				else if(similarityType.equals("custom")){
+					similarity = UserSimilarity.customSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor, itemsAvgRating, globalRatingAvg);
 				}
 				
 				IdSimilarityPair pair = new IdSimilarityPair(neighborUser, similarity);
@@ -110,7 +137,13 @@ public class UserBasedCF {
 					itemRatingPrediction = RatingPrediction.userBasedSimpleAveragePrediction(itemId, topNeighborsList, userItemRatingMap, usersAvgRating);
 				}
 				else if(predictionType.equals("weighted")){
-					itemRatingPrediction = RatingPrediction.userBasedWeightedAveragePrediction(itemId, topNeighborsList, trainUserItemInteractionMap);
+					itemRatingPrediction = RatingPrediction.userBasedWeightedAveragePrediction(itemId, topNeighborsList, userItemRatingMap, usersAvgRating);
+				}
+				else if(predictionType.equals("pearson")){
+					itemRatingPrediction = RatingPrediction.userBasedPearsonPrediction(itemId, testUser, topNeighborsList, userItemRatingMap, usersAvgRating);
+				}
+				else if(predictionType.equals("custom")){
+					itemRatingPrediction = RatingPrediction.userBasedCustomPrediction(itemId, topNeighborsList, userItemRatingDateMap, usersAvgRating, 2d, 3d);
 				}
 				
 				
@@ -127,29 +160,56 @@ public class UserBasedCF {
 		System.out.println("writing predictions to file ... ");
 		FileInteraction.writePredictionsToFile(testFile, outputFile, ratingPredictions);
 		System.out.println("process complete");
+		endTime   = System.currentTimeMillis();
+		System.out.println("Total run time: "+((endTime - startTime)/1000.d) + " seconds");
 	}
 	
 	
 	
 	
 	
-	public void printUsersTopKNeighbors(long targetUser, String similarityType){
+	public void printUsersTopKNeighbors(long targetUser, String similarityType) throws FileNotFoundException{
 		
-		assert(similarityType.equals("dotProduct") || similarityType.equals("strictDotProduct") || similarityType.equals("cosine"));
+		assert(similarityType.equals("dotProduct") || similarityType.equals("cosine") || similarityType.equals("normalizedDotProduct") || similarityType.equals("normalizedCosine") );
 		
 		//Read training file and map data, indexing by user
 		System.out.println("Top "+this.k+" Neighbors for User "+targetUser+" using "+similarityType+" similarity");
-		HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = new HashMap<Long, LinkedList<InteractionInfoItem>>();
-		try {
-			trainUserItemInteractionMap = FileInteraction.readAndMapTrainFileIndexedByUser (trainFile);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-			System.exit(-1);
-		}
+		HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap = FileInteraction.readAndMapTrainFileIndexedByUser (trainFile);
 		
 		//get top users for this user
 		LinkedList<InteractionInfoItem> testUserFV = trainUserItemInteractionMap.get(targetUser);
 		PriorityQueue<IdSimilarityPair> topNeighbors = new PriorityQueue<IdSimilarityPair>();
+		
+		//Read training file and map data, indexing by item
+		System.out.println("reading training data (indexing by item) ...");
+		HashMap<Long, Double> itemsAvgRating = new HashMap<Long, Double>();
+		HashMap<Long, LinkedList<InteractionInfoUser>> trainItemUserInteractionMap = FileInteraction.readAndMapTrainFileIndexedByItem (trainFile);
+
+		//global average rating
+		double globalRatingAvg = DataStatistics.getGlobalRatingAverage(trainFile);
+		
+		//Pre-compute rating averages
+		HashMap<Long, Double> usersAvgRating = new HashMap<Long, Double>();
+		for(Long user : trainUserItemInteractionMap.keySet()){
+			double sumOfRatings = 0d;
+			for(InteractionInfoItem iii : trainUserItemInteractionMap.get(user)){
+				sumOfRatings += iii.rating;
+			}
+			double avgRating = sumOfRatings / trainUserItemInteractionMap.get(user).size();
+			usersAvgRating.put(user, avgRating);
+		}
+		
+		//pre-compute items' average ratings
+		for(Long item : trainItemUserInteractionMap.keySet()){
+			double sumOfRatings = 0d;
+			for(InteractionInfoUser iiu : trainItemUserInteractionMap.get(item)){
+				sumOfRatings += iiu.rating;
+			}
+			double avgRating = sumOfRatings / trainItemUserInteractionMap.get(item).size();
+			itemsAvgRating.put(item, avgRating);
+		}
+
+		
 		for(long neighborUser : trainUserItemInteractionMap.keySet()){
 			if(targetUser==neighborUser) continue;
 			
@@ -157,14 +217,19 @@ public class UserBasedCF {
 			
 			//compute similarity
 			double similarity = 0d;
+			double avgRatingTestUser = usersAvgRating.get(targetUser);
+			double avgRatingNeighbor = usersAvgRating.get(neighborUser);
 			if(similarityType.equals("dotProduct")){
-				similarity = UserSimilarity.dotProductSimilarity(testUserFV, neighborUserFV);
-			}
-			else if(similarityType.equals("strictDotProduct")){
-				similarity = UserSimilarity.strictDotProductSimilarity(testUserFV, neighborUserFV);
+				similarity = UserSimilarity.dotProductSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor);
 			}
 			else if(similarityType.equals("cosine")){
-				similarity = UserSimilarity.cosineSimilarity(testUserFV, neighborUserFV);
+				similarity = UserSimilarity.cosineSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor);
+			}
+			else if(similarityType.equals("normalizedDotProduct")){
+				similarity = UserSimilarity.normalizedDotProductSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor, itemsAvgRating, globalRatingAvg);
+			}
+			else if(similarityType.equals("normalizedCosine")){
+				similarity = UserSimilarity.normalizedCosineSimilarity(testUserFV, avgRatingTestUser, neighborUserFV, avgRatingNeighbor, itemsAvgRating, globalRatingAvg);
 			}
 			
 			IdSimilarityPair pair = new IdSimilarityPair(neighborUser, similarity);
@@ -191,4 +256,9 @@ public class UserBasedCF {
 		}
 		
 	}
+	
+	
+	
+	
+	
 }

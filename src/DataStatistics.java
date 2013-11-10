@@ -138,7 +138,7 @@ public class DataStatistics {
 		
 	}
 	
-public static void printItemStatistics (long targetItemId, String filePath) throws FileNotFoundException{
+	public static void printItemStatistics (long targetItemId, String filePath) throws FileNotFoundException{
 		
 		int[] ratingDistribution = new int[5];
 		double avgRating = 0d;
@@ -178,6 +178,11 @@ public static void printItemStatistics (long targetItemId, String filePath) thro
 			System.out.println("# of times it was rated "+(i+1)+": "+ratingDistribution[i]);
 		}
 		
+	}
+	
+	public static double getGlobalRatingAverage(String filePath) throws FileNotFoundException{
+		int[] ratingDistribution = DataStatistics.ratingDistribution(filePath);
+		return DataStatistics.ratingAverage(ratingDistribution);
 	}
 	
 }

@@ -1,3 +1,6 @@
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -6,36 +9,6 @@ import java.util.LinkedList;
 public class RatingPrediction {
 	
 	/*------------ USER-BASED --------*/
-	/*
-	public static double userBasedSimpleAveragePredictionOld (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap){
-		
-		double prediction = 0.d;
-		
-		for(IdSimilarityPair idSim : topNeighborsList){
-			long currentNeighbor = idSim.id;
-			LinkedList<InteractionInfoItem> neighborFV = trainUserItemInteractionMap.get(currentNeighbor);
-			
-			Boolean containsTargetItemId = false;
-			double sumNeighborRating = 0;
-			for (InteractionInfoItem iii : neighborFV){
-				if(iii.element != targetItemId){
-					sumNeighborRating += iii.rating;
-				}
-				else if(iii.element == targetItemId){
-					containsTargetItemId = true;
-					prediction += iii.rating;
-					break;
-				}
-			}
-			//if neighbor hasn't rated that movie, get average rating
-			if(!containsTargetItemId){
-				prediction += sumNeighborRating/neighborFV.size();
-			}
-		}
-		
-		return prediction / topNeighborsList.size();
-	}
-	*/
 	
 	public static double userBasedSimpleAveragePrediction (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, HashMap<Long, Integer>> userItemRatingMap, HashMap<Long, Double> usersAvgRating){
 		
@@ -58,34 +31,110 @@ public class RatingPrediction {
 	}
 	
 	
-	public static double userBasedWeightedAveragePrediction (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, LinkedList<InteractionInfoItem>> trainUserItemInteractionMap){
+	public static double userBasedWeightedAveragePrediction (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, HashMap<Long, Integer>> userItemRatingMap, HashMap<Long, Double> usersAvgRating){
 		
 		double prediction = 0.d;
-		double sumOfSimilarities = 0.d;
+		double sumOfSimilarities = 0d;
 		
 		for(IdSimilarityPair idSim : topNeighborsList){
 			long currentNeighbor = idSim.id;
 			double currentSimilarity = idSim.similarity;
-			sumOfSimilarities += currentSimilarity; 
+			sumOfSimilarities += currentSimilarity;
+			HashMap<Long, Integer> neighborFV = userItemRatingMap.get(currentNeighbor);
 			
-			LinkedList<InteractionInfoItem> neighborFV = trainUserItemInteractionMap.get(currentNeighbor);
+			if(neighborFV.containsKey(targetItemId)){
+				prediction += currentSimilarity*neighborFV.get(targetItemId);
+			}
+			else{
+				prediction += currentSimilarity*usersAvgRating.get(currentNeighbor);
+			}
+		}
+		
+		if(sumOfSimilarities==0){
+			double neighborsAvg = 0d;
+			for(Long user : usersAvgRating.keySet()){
+				neighborsAvg += usersAvgRating.get(user);
+			}
+			return neighborsAvg/usersAvgRating.keySet().size();
+		}
+		
+		return prediction / sumOfSimilarities;
+	}
+	
+	public static double userBasedPearsonPrediction (long targetItemId, long targetUser, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, HashMap<Long, Integer>> userItemRatingMap, HashMap<Long, Double> usersAvgRating){
+		
+		double neighborsContribution = 0.d;
+		double sumOfSimilarities = 0d;
+		
+		for(IdSimilarityPair idSim : topNeighborsList){
+			long currentNeighbor = idSim.id;
+			double currentSimilarity = idSim.similarity;
 			
-			Boolean containsTargetItemId = false;
-			double sumNeighborRating = 0;
-			for (InteractionInfoItem iii : neighborFV){
-				if(iii.element != targetItemId){
-					sumNeighborRating += iii.rating;
-				}
-				else if(iii.element == targetItemId){
-					containsTargetItemId = true;
-					prediction += currentSimilarity*iii.rating;
-					break;
-				}
+			HashMap<Long, Integer> neighborFV = userItemRatingMap.get(currentNeighbor);
+			if(neighborFV.containsKey(targetItemId)){
+				double neighborRating = neighborFV.get(targetItemId);
+				double neighborAvgRating = usersAvgRating.get(currentNeighbor);
+				neighborsContribution += currentSimilarity*(neighborRating - neighborAvgRating);
+				sumOfSimilarities += currentSimilarity;
 			}
-			//if neighbor hasn't rated that movie, get average rating
-			if(!containsTargetItemId){
-				prediction += currentSimilarity*(sumNeighborRating/(double)neighborFV.size());
+		}
+		
+		double targetUserAvg = usersAvgRating.get(targetUser);
+		
+		if(sumOfSimilarities==0){ 
+			return targetUserAvg;
+		}
+		
+		return targetUserAvg + ( neighborsContribution / sumOfSimilarities );
+	}
+	
+	//custom prediction is an extension of the Weighted Average.
+	//Extensions include: case amplification (Breese et al.), presence boost (boosting if neighbor has rated item), time-variant relevance
+	public static double userBasedCustomPrediction (long targetItemId, LinkedList<IdSimilarityPair> topNeighborsList, HashMap<Long, HashMap<Long, RatingDatePair>> userItemRatingMap, HashMap<Long, Double> usersAvgRating, double amplification, double presenceBoost) throws ParseException{
+		
+		double prediction = 0.d;
+		double sumOfSimilarities = 0d;
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+		
+		for(IdSimilarityPair idSim : topNeighborsList){
+			long currentNeighbor = idSim.id;
+			double currentSimilarity = Math.pow(idSim.similarity, amplification);
+			
+			HashMap<Long, RatingDatePair> neighborFV = userItemRatingMap.get(currentNeighbor);
+			
+			if(neighborFV.containsKey(targetItemId)){
+				//get oldest and most recent rating dates
+				Date oldest = sdf.parse("2050-12-31");
+				Date newest = sdf.parse("1970-01-01");
+				for(Long itemKey : neighborFV.keySet()){
+					Date currentDate = sdf.parse(neighborFV.get(itemKey).getRatingDate());
+					if(currentDate.getTime() < oldest.getTime()){
+						oldest = currentDate;
+					}
+					if(currentDate.getTime() > newest.getTime()){
+						newest = currentDate;
+					}
+				}
+				long ratingPeriod = (newest.getTime() - oldest.getTime())/(1000*60*60*24);
+				Date ratingDate = sdf.parse(neighborFV.get(targetItemId).getRatingDate());
+				double oldRate = (ratingPeriod<5) ? 0 : ( ( (newest.getTime() - ratingDate.getTime() ) / (1000d*60d*60d*24d) ) / (double)ratingPeriod );
+				double freshnessBoosting = Math.exp((1d-oldRate)/3d);
+				
+				prediction += presenceBoost*freshnessBoosting*currentSimilarity*neighborFV.get(targetItemId).getRating();
+				sumOfSimilarities += presenceBoost*currentSimilarity*freshnessBoosting;
 			}
+			else{
+				prediction += currentSimilarity*usersAvgRating.get(currentNeighbor);
+				sumOfSimilarities += currentSimilarity;
+			}
+		}
+		
+		if(sumOfSimilarities==0){
+			double neighborsAvg = 0d;
+			for(Long user : usersAvgRating.keySet()){
+				neighborsAvg += usersAvgRating.get(user);
+			}
+			return neighborsAvg/usersAvgRating.keySet().size();
 		}
 		
 		return prediction / sumOfSimilarities;
