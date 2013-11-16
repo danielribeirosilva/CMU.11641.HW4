@@ -16,9 +16,9 @@ public class FileInteraction {
 	// 2) training_set.csv : ("MovieID","UserID","Rating", "RatingDate") as (long, long, int, String)
 	
 	public static HashMap<Long, LinkedList<Long>> readAndMapTestFile (String filePath, boolean indexByUser) throws FileNotFoundException{
-		HashMap<Long, LinkedList<Long>> userItemPair = new HashMap<Long, LinkedList<Long>>();
+	    HashMap<Long, LinkedList<Long>> userItemPair = new HashMap<Long, LinkedList<Long>>();
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -68,9 +68,9 @@ public class FileInteraction {
 	
 	
 	public static HashMap<Long, LinkedList<InteractionInfoItem>> readAndMapTrainFileIndexedByUser (String filePath) throws FileNotFoundException{
-		HashMap<Long, LinkedList<InteractionInfoItem>> trainingMap = new HashMap<Long, LinkedList<InteractionInfoItem>>();
+	    HashMap<Long, LinkedList<InteractionInfoItem>> trainingMap = new HashMap<Long, LinkedList<InteractionInfoItem>>();
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -110,9 +110,9 @@ public class FileInteraction {
 	}
 	
 	public static HashMap<Long, HashMap<Long, Integer>> generateUserItemRatingMapFromTrainFile (String filePath) throws FileNotFoundException{
-		HashMap<Long, HashMap<Long, Integer>> trainingMap = new HashMap<Long, HashMap<Long, Integer>>();
+  	    HashMap<Long, HashMap<Long, Integer>> trainingMap = new HashMap<Long, HashMap<Long, Integer>>();
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -146,9 +146,9 @@ public class FileInteraction {
 	}
 	
 	public static HashMap<Long, HashMap<Long, RatingDatePair>> generateUserItemRatingDatePairMapFromTrainFile (String filePath) throws FileNotFoundException{
-		HashMap<Long, HashMap<Long, RatingDatePair>> trainingMap = new HashMap<Long, HashMap<Long, RatingDatePair>>();
+	    HashMap<Long, HashMap<Long, RatingDatePair>> trainingMap = new HashMap<Long, HashMap<Long, RatingDatePair>>();
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -183,9 +183,9 @@ public class FileInteraction {
 	}
 	
 	public static HashMap<Long, LinkedList<InteractionInfoUser>> readAndMapTrainFileIndexedByItem (String filePath) throws FileNotFoundException{
-		HashMap<Long, LinkedList<InteractionInfoUser>> trainingMap = new HashMap<Long, LinkedList<InteractionInfoUser>>();
+	    HashMap<Long, LinkedList<InteractionInfoUser>> trainingMap = new HashMap<Long, LinkedList<InteractionInfoUser>>();
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -226,7 +226,7 @@ public class FileInteraction {
 	
 	public static void writePredictionsToFile(String testFile, String outputFileName, HashMap<Long, HashMap<Long, Double>> ratingPredictions) throws IOException{
 		
-		FileWriter fileWriter = new FileWriter(outputFileName);
+	    FileWriter fileWriter = new FileWriter(outputFileName);
 	    BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 	    
 	    Scanner scan = new Scanner(new File(testFile));
@@ -279,7 +279,7 @@ public class FileInteraction {
 	
 	public static void writeInvertedPredictionsToFile(String testFile, String outputFileName, HashMap<Long, HashMap<Long, Double>> ratingPredictions) throws IOException{
 		
-		FileWriter fileWriter = new FileWriter(outputFileName);
+	    FileWriter fileWriter = new FileWriter(outputFileName);
 	    BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
 	    
 	    Scanner scan = new Scanner(new File(testFile));
