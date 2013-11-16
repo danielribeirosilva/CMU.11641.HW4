@@ -1,4 +1,3 @@
-
 public class IdSimilarityPair implements Comparable<IdSimilarityPair> {
 	
 	public long id;
@@ -22,10 +21,10 @@ public class IdSimilarityPair implements Comparable<IdSimilarityPair> {
 	}
 	
 	 @Override
-    public int hashCode() {
-        Long thisId = new Long(this.id);
-        return thisId.hashCode();
-    }
+    	public int hashCode() {
+        	Long thisId = new Long(this.id);
+        	return thisId.hashCode();
+    	}
 	
 	public String toString(){
 		return "[ " + id+" "+similarity + "]";
