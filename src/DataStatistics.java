@@ -7,9 +7,9 @@ import java.util.Scanner;
 public class DataStatistics {
 
 	public static int numberOfItems (String filePath) throws FileNotFoundException{
-		HashSet<Long> itemsSet = new HashSet<Long>();
+	    HashSet<Long> itemsSet = new HashSet<Long>();
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
