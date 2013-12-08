@@ -237,11 +237,9 @@ public class UserBasedCF {
 			if(topNeighbors.size() < this.k){
 				topNeighbors.add(pair);
 			}
-			else{
-				if(topNeighbors.peek().similarity < similarity){
-					topNeighbors.poll();
-					topNeighbors.add(pair);
-				}
+			else if(topNeighbors.peek().similarity < similarity){
+				topNeighbors.poll();
+				topNeighbors.add(pair);
 			}
 		}
 		
