@@ -33,9 +33,9 @@ public class DataStatistics {
 	}
 	
 	public static int numberOfUsers (String filePath) throws FileNotFoundException{
-		HashSet<Long> usersSet = new HashSet<Long>();
+	    HashSet<Long> usersSet = new HashSet<Long>();
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -55,13 +55,13 @@ public class DataStatistics {
 
 	    } while (scan.hasNext());
 	    
-		return usersSet.size();
+	    return usersSet.size();
 	}
 	
 	public static int[] ratingDistribution (String filePath) throws FileNotFoundException{
-		int[] ratingDistribution = new int[5];
+	    int[] ratingDistribution = new int[5];
 		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -81,13 +81,13 @@ public class DataStatistics {
 
 	    } while (scan.hasNext());
 	    
-		return ratingDistribution;
+	    return ratingDistribution;
  	}
 	
 	public static double ratingAverage(int[] ratingDistribution){
-		assert(ratingDistribution.length==5);
-		int totalRatings = 0;
-		double ratingAvg = 0;
+	    assert(ratingDistribution.length==5);
+	    int totalRatings = 0;
+	    double ratingAvg = 0;
 	    for(int i=0; i<5; i++){
 	    	ratingAvg+= (i+1)*ratingDistribution[i];
 	    	totalRatings += ratingDistribution[i];
@@ -98,12 +98,11 @@ public class DataStatistics {
 	
 	public static void printUserStatistics (long targetUserId, String filePath) throws FileNotFoundException{
 		
-		int[] ratingDistribution = new int[5];
-		double avgRating = 0d;
-		int totalMoviesRated = 0;
+	    int[] ratingDistribution = new int[5];
+	    double avgRating = 0d;
+	    int totalMoviesRated = 0;
 		
-		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -131,21 +130,20 @@ public class DataStatistics {
 	    avgRating /= totalMoviesRated;
 	    System.out.println("Statistics for User " + targetUserId);
 	    System.out.println("total movies rated: " + totalMoviesRated);
-		System.out.println("average rating: " + avgRating);
-		for(int i=0; i<5; i++){
-			System.out.println("# of times user rated any movie "+(i+1)+": "+ratingDistribution[i]);
-		}
+	    System.out.println("average rating: " + avgRating);
+	    for(int i=0; i<5; i++){
+		System.out.println("# of times user rated any movie "+(i+1)+": "+ratingDistribution[i]);
+	    }
 		
 	}
 	
 	public static void printItemStatistics (long targetItemId, String filePath) throws FileNotFoundException{
 		
-		int[] ratingDistribution = new int[5];
-		double avgRating = 0d;
-		int totalRatings = 0;
+	    int[] ratingDistribution = new int[5];
+	    double avgRating = 0d;
+	    int totalRatings = 0;
 		
-		
-		Scanner scan = new Scanner(new File(filePath));
+	    Scanner scan = new Scanner(new File(filePath));
 	    String line = null;
 	    
 	    //read and ignore first line (headers)
@@ -173,16 +171,16 @@ public class DataStatistics {
 	    avgRating /= totalRatings;
 	    System.out.println("Statistics for Movie " + targetItemId);
 	    System.out.println("total ratings: " + totalRatings);
-		System.out.println("average rating: " + avgRating);
-		for(int i=0; i<5; i++){
-			System.out.println("# of times it was rated "+(i+1)+": "+ratingDistribution[i]);
-		}
+	    System.out.println("average rating: " + avgRating);
+	    for(int i=0; i<5; i++){
+		System.out.println("# of times it was rated "+(i+1)+": "+ratingDistribution[i]);
+	    }
 		
 	}
 	
 	public static double getGlobalRatingAverage(String filePath) throws FileNotFoundException{
-		int[] ratingDistribution = DataStatistics.ratingDistribution(filePath);
-		return DataStatistics.ratingAverage(ratingDistribution);
+	    int[] ratingDistribution = DataStatistics.ratingDistribution(filePath);
+	    return DataStatistics.ratingAverage(ratingDistribution);
 	}
 	
 }
